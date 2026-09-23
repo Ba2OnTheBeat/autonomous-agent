@@ -1,76 +1,56 @@
-﻿<!doctype html>
-<html lang="en">
+<!doctype html>
+<html lang="tr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lead booking demo</title>
+  <title>AI Operasyon Merkezi</title>
   <style>
-    body { font: 16px system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #172033; }
-    form { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #ccd3df; border-radius: 8px; }
-    input, textarea, button { font: inherit; padding: .6rem; }
-    textarea { min-height: 6rem; }
-    button { cursor: pointer; background: #2457d6; color: white; border: 0; border-radius: 5px; }
-    #result { white-space: pre-wrap; margin-top: 1rem; padding: 1rem; background: #f2f5fa; border-radius: 8px; }
-    .hidden { display: none; }
+    :root { --ink:#172033; --muted:#657089; --line:#dce2ec; --blue:#2457d6; --green:#138a55; --yellow:#b7791f; }
+    * { box-sizing:border-box; } body { margin:0; font:15px system-ui,sans-serif; background:#f5f7fb; color:var(--ink); }
+    header { background:#172033; color:white; padding:1.5rem max(1rem,calc((100% - 1160px)/2)); }
+    header p { color:#cbd5e1; margin:.35rem 0 0; } main { max-width:1160px; margin:1.5rem auto; padding:0 1rem; }
+    .top, .grid { display:grid; gap:1rem; } .top { grid-template-columns:repeat(4,1fr); } .grid { grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
+    .card { background:white; border:1px solid var(--line); border-radius:12px; padding:1rem; box-shadow:0 2px 8px #1720330b; }
+    .metric { font-size:2rem; font-weight:700; } .label,.muted { color:var(--muted); } h2 { margin:1.75rem 0 .75rem; font-size:1.2rem; }
+    .agent { border-left:5px solid var(--blue); } .agent h3 { margin:.1rem 0 .4rem; } .badge { display:inline-block; border-radius:99px; padding:.2rem .55rem; font-size:.78rem; background:#e8eefc; color:var(--blue); }
+    .badge.ready { background:#e6f7ee; color:var(--green); } .row { display:flex; justify-content:space-between; gap:1rem; align-items:center; }
+    button { cursor:pointer; border:0; border-radius:7px; padding:.65rem 1rem; background:var(--blue); color:white; font:inherit; } button.secondary { background:#e8eefc;color:var(--blue); }
+    table { width:100%; border-collapse:collapse; } td,th { text-align:left; padding:.65rem .4rem; border-bottom:1px solid var(--line); } th { color:var(--muted); font-weight:500; }
+    #notice { min-height:1.5rem; margin-top:1rem; color:var(--muted); } a { color:var(--blue); }
+    @media(max-width:700px){.top{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
 <body>
-  <h1>Lead booking demo</h1>
-  <p>Submit an inbound lead, then request a local mock-calendar appointment. No messages are sent.</p>
-  <button id="discover" type="button">Run opportunity agent</button>
-  <p id="opportunity-help">The safe local agent ranks mock job-board opportunities for review; it never submits proposals.</p>
-  <form id="lead-form">
-    <label>Name <input name="name" required minlength="2" maxlength="120"></label>
-    <label>Email <input name="email" type="email" required maxlength="320"></label>
-    <label>Company <input name="company" maxlength="160"></label>
-    <label>Phone <input name="phone" maxlength="40"></label>
-    <label>What do you need? <textarea name="need" required minlength="10" maxlength="2000"></textarea></label>
-    <button type="submit">Submit lead</button>
-  </form>
-  <form id="appointment-form" class="hidden">
-    <h2>Request an appointment</h2>
-    <label>Start time (your browser timezone)
-      <input name="requested_start" type="datetime-local" required>
-    </label>
-    <button type="submit">Book appointment</button>
-  </form>
-  <div id="result" role="status">Waiting for a lead...</div>
-  <p><a href="/docs">Open API documentation</a> · <a href="/metrics">View funnel metrics</a></p>
+  <header><h1>AI Operasyon Merkezi</h1><p>İş bulma → araştırma → teslimat → finans akışını tek ekranda takip et.</p></header>
+  <main>
+    <div class="row"><div><h2 style="margin-top:0">Genel durum</h2><span class="muted">Yerel/mock çalışma alanı · dışarıya mesaj gönderilmez</span></div><button id="discover">İş ara ve puanla</button></div>
+    <section class="top" aria-label="Özet metrikler">
+      <div class="card"><div class="label">Bulunan fırsat</div><div id="opps" class="metric">-</div></div>
+      <div class="card"><div class="label">İnceleme bekleyen</div><div id="review" class="metric">-</div></div>
+      <div class="card"><div class="label">Lead</div><div id="leads" class="metric">-</div></div>
+      <div class="card"><div class="label">Randevu</div><div id="booked" class="metric">-</div></div>
+    </section>
+    <div id="notice" role="status">Hazır. “İş ara ve puanla” butonuna basınca İş Bulucu AI çalışır.</div>
+    <h2>AI ekip haritası</h2><section id="agents" class="grid"></section>
+    <h2>Son bulunan işler</h2><section class="card"><table><thead><tr><th>İş</th><th>Kaynak</th><th>Skor</th><th>Durum</th></tr></thead><tbody id="opportunity-list"><tr><td colspan="4" class="muted">Henüz tarama yapılmadı.</td></tr></tbody></table></section>
+    <h2>Son aktiviteler</h2><section class="card"><div id="runs" class="muted">Henüz aktivite yok.</div></section>
+    <p><a href="/docs">Teknik API dokümanı</a> · <a href="/metrics">Ham funnel metrikleri</a></p>
+  </main>
   <script>
-    const result = document.querySelector("#result");
-    const appointmentForm = document.querySelector("#appointment-form");
-    document.querySelector("#discover").addEventListener("click", async () => {
-      try {
-        const response = await fetch("/agent/discover", { method: "POST" });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.detail || "Discovery failed");
-        show(body.opportunities);
-      } catch (error) { show(error.message); }
-    });
-    let leadId;
-    const show = (value) => { result.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
-    document.querySelector("#lead-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const data = Object.fromEntries(new FormData(event.target));
-      try {
-        const response = await fetch("/leads", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data) });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.detail || "Lead could not be submitted");
-        leadId = body.id;
-        show(body);
-        appointmentForm.classList.toggle("hidden", body.qualification_status !== "qualified");
-      } catch (error) { show(error.message); }
-    });
-    appointmentForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const requested_start = new Date(event.target.requested_start.value).toISOString();
-      try {
-        const response = await fetch(`/leads/${leadId}/appointments`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({requested_start}) });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.detail || "Appointment could not be booked");
-        show(body);
-      } catch (error) { show(error.message); }
-    });
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function load() {
+      const [status, metrics, opportunities] = await Promise.all([
+        fetch("/agents/status").then(r=>r.json()), fetch("/metrics").then(r=>r.json()), fetch("/opportunities").then(r=>r.json())
+      ]);
+      $("agents").innerHTML = status.agents.map(a => `<article class="card agent"><div class="row"><h3>${esc(a.name)}</h3><span class="badge ready">Hazır</span></div><p>${esc(a.role)}</p><strong>Yaptığı işler</strong><p class="muted">${a.does.map(esc).join(" · ")}</p><strong>Desteklediği</strong><p class="muted">${a.supports.map(esc).join(" · ")}</p></article>`).join("");
+      $("opps").textContent = opportunities.length; $("review").textContent = opportunities.filter(o=>o.status==="new").length;
+      $("leads").textContent = metrics.leads; $("booked").textContent = metrics.booked_appointments;
+      $("opportunity-list").innerHTML = opportunities.length ? opportunities.map(o=>`<tr><td>${esc(o.title)}</td><td>${esc(o.source)}</td><td><strong>${o.score}/100</strong></td><td>${esc(o.status)}</td></tr>`).join("") : '<tr><td colspan="4" class="muted">Henüz tarama yapılmadı.</td></tr>';
+      $("runs").innerHTML = status.runs.length ? status.runs.slice().reverse().map(r=>`<div><strong>${esc(r.agent)}</strong> · ${esc(r.action)} · ${esc(r.result)}</div>`).join("") : "Henüz aktivite yok.";
+    }
+    $("discover").addEventListener("click", async () => { $("notice").textContent = "İş Bulucu AI çalışıyor..."; $("discover").disabled=true; try { const r=await fetch("/agent/discover",{method:"POST"}); if(!r.ok) throw new Error((await r.json()).detail); $("notice").textContent="İş Bulucu tamamlandı; skorlanan işler aşağıda."; await load(); } catch(e) { $("notice").textContent="Hata: "+e.message; } finally { $("discover").disabled=false; } });
+    load().catch(e => $("notice").textContent = "Panel verisi alınamadı: "+e.message);
   </script>
 </body>
 </html>
