@@ -1,4 +1,5 @@
-﻿from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -38,6 +39,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     )
     app = FastAPI(title=f"{settings.business_name} Lead Booking API", version="0.1.0")
     app.state.lead_service = service
+    app.state.agent_runs = []
     demo_path = Path(__file__).with_name("static") / "index.html"
 
     @app.get("/", include_in_schema=False)
@@ -47,6 +49,60 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     @app.get("/health")
     def health() -> dict:
         return {"status": "ok", "service": settings.business_name}
+
+    @app.get("/agents/status")
+    def agent_status() -> dict:
+        agents = [
+            {
+                "id": "opportunity",
+                "name": "İş Bulucu",
+                "role": "İzinli feed ve mock katalogdan uygun iş fırsatlarını bulur.",
+                "status": "ready",
+                "supports": ["research", "data"],
+                "does": ["Fırsatları tarar", "Skorlar", "İnceleme kuyruğuna alır"],
+            },
+            {
+                "id": "research",
+                "name": "Araştırma AI",
+                "role": "İş ilanının ihtiyacını ve kapsamını özetler.",
+                "status": "ready",
+                "supports": ["opportunity"],
+                "does": ["İhtiyaç özeti", "Risk/uyum notu"],
+            },
+            {
+                "id": "seo",
+                "name": "SEO AI",
+                "role": "SEO türündeki işleri sınıflandırır ve teslim fikri çıkarır.",
+                "status": "ready",
+                "supports": ["opportunity", "delivery"],
+                "does": ["SEO sinyali", "Teslim kapsamı"],
+            },
+            {
+                "id": "data",
+                "name": "Veri AI",
+                "role": "Fırsat skorlarını ve dönüşüm sayılarını hesaplar.",
+                "status": "ready",
+                "supports": ["finance", "opportunity"],
+                "does": ["Skor hesabı", "Funnel metrikleri"],
+            },
+            {
+                "id": "delivery",
+                "name": "Teslimat AI",
+                "role": "Seçilen iş için yapılacaklar listesini hazırlar.",
+                "status": "ready",
+                "supports": ["research", "seo"],
+                "does": ["İş planı", "Teslim çıktısı"],
+            },
+            {
+                "id": "finance",
+                "name": "Finans AI",
+                "role": "Bütçe ve potansiyel geliri görünür kılar.",
+                "status": "ready",
+                "supports": ["opportunity", "delivery"],
+                "does": ["Bütçe özeti", "Gelir tahmini (ilan bütçesi)"],
+            },
+        ]
+        return {"updated_at": datetime.now(timezone.utc).isoformat(), "agents": agents, "runs": app.state.agent_runs[-20:]}
 
     @app.post("/leads", status_code=201)
     def create_lead(request: LeadRequest) -> dict:
@@ -88,9 +144,18 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     @app.post("/agent/discover", status_code=200)
     def discover_opportunities() -> dict:
         try:
+            started_at = datetime.now(timezone.utc).isoformat()
             opportunities = run_discovery(service, settings.opportunity_feed_path)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        app.state.agent_runs.append({
+            "agent": "İş Bulucu",
+            "action": "Fırsat keşfi ve skorlaması",
+            "status": "completed",
+            "started_at": started_at,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "result": f"{len(opportunities)} fırsat bulundu",
+        })
         return {"count": len(opportunities), "opportunities": opportunities}
 
     @app.get("/opportunities")
