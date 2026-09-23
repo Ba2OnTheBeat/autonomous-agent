@@ -17,6 +17,8 @@
 <body>
   <h1>Lead booking demo</h1>
   <p>Submit an inbound lead, then request a local mock-calendar appointment. No messages are sent.</p>
+  <button id="discover" type="button">Run opportunity agent</button>
+  <p id="opportunity-help">The safe local agent ranks mock job-board opportunities for review; it never submits proposals.</p>
   <form id="lead-form">
     <label>Name <input name="name" required minlength="2" maxlength="120"></label>
     <label>Email <input name="email" type="email" required maxlength="320"></label>
@@ -37,6 +39,14 @@
   <script>
     const result = document.querySelector("#result");
     const appointmentForm = document.querySelector("#appointment-form");
+    document.querySelector("#discover").addEventListener("click", async () => {
+      try {
+        const response = await fetch("/agent/discover", { method: "POST" });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.detail || "Discovery failed");
+        show(body.opportunities);
+      } catch (error) { show(error.message); }
+    });
     let leadId;
     const show = (value) => { result.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
     document.querySelector("#lead-form").addEventListener("submit", async (event) => {
