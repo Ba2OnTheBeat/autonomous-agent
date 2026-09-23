@@ -1,4 +1,4 @@
-import unittest
+﻿import unittest
 from datetime import datetime, timedelta, timezone
 
 from lead_service.db import Database
@@ -45,6 +45,19 @@ class LeadServiceTests(unittest.TestCase):
             self.service.book_appointment(lead["id"], "2020-01-01T10:00:00+00:00")
         with self.assertRaisesRegex(ValueError, "timezone"):
             self.service.book_appointment(lead["id"], "2030-01-01T10:00:00")
+
+    def test_funnel_summary_and_appointment_list_include_context(self):
+        lead = self.service.create_lead(
+            "Ada Lovelace", "ada@example.com", "We need a recurring appointment booking workflow."
+        )
+        self.service.book_appointment(lead["id"], self.future_time())
+        self.assertEqual(
+            self.service.funnel_summary(),
+            {"leads": 1, "qualified_leads": 1, "booked_appointments": 1},
+        )
+        appointment = self.service.list_appointments()[0]
+        self.assertEqual(appointment["lead_name"], "Ada Lovelace")
+        self.assertEqual(appointment["lead_email"], "ada@example.com")
 
     @staticmethod
     def future_time():
