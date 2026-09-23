@@ -17,6 +17,7 @@ Optional environment variables:
 | `LEAD_DATABASE_PATH` | `leads.db` | SQLite database path (`:memory:` is useful for tests) |
 | `BUSINESS_NAME` | `Local Demo Business` | Name returned by the health endpoint |
 | `APPOINTMENT_DURATION_MINUTES` | `30` | Length of each local mock-calendar booking |
+| `OPPORTUNITY_FEED_PATH` | unset | Optional local JSON export used by the opportunity agent |
 
 ## Run
 
@@ -25,6 +26,8 @@ python run_service.py
 ```
 
 Open `http://127.0.0.1:8000/` for the guided browser demo, or `http://127.0.0.1:8000/docs` for interactive Swagger API documentation. The demo submits a lead, shows its qualification result, and reveals appointment booking only for qualified leads. Use `POST /agent/discover` in Swagger to run the local opportunity agent, then inspect ranked results at `GET /opportunities`. It uses mock opportunities and sends nothing externally.
+
+To test with your own approved export, set `OPPORTUNITY_FEED_PATH` to a JSON array file containing `external_id`, `title`, `source`, `url`, `summary`, and optional `budget` fields. The agent reads that local file, scores the opportunities, and queues them for review; it does not contact the source.
 
 Example API requests:
 
