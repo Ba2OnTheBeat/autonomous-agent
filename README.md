@@ -1,4 +1,4 @@
-# Lead booking MVP
+﻿# Lead booking MVP
 
 This repository now includes a small, local-first lead-generation demo. It accepts an inbound lead, performs lightweight qualification, and books a requested appointment against a SQLite-backed mock calendar. It does not send email, text messages, or other unsolicited outreach.
 
