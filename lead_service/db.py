@@ -24,6 +24,19 @@ CREATE TABLE IF NOT EXISTS appointments (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS appointments_start_idx ON appointments(starts_at);
+CREATE TABLE IF NOT EXISTS opportunities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    external_id TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    source TEXT NOT NULL,
+    url TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    budget TEXT,
+    score INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    discovered_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS opportunities_score_idx ON opportunities(score DESC);
 """
 
 

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from .config import Settings
 from .db import Database
 from .service import LeadService
+from .opportunity_agent import discover_mock_opportunities
 
 
 class LeadRequest(BaseModel):
@@ -24,6 +25,10 @@ class LeadRequest(BaseModel):
 
 class AppointmentRequest(BaseModel):
     requested_start: str = Field(min_length=10, max_length=80)
+
+
+class OpportunityStatusRequest(BaseModel):
+    status: str = Field(min_length=3, max_length=30)
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
@@ -79,6 +84,26 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     def metrics() -> dict:
         """Local funnel metrics for demo and customer validation."""
         return service.funnel_summary()
+
+    @app.post("/agent/discover", status_code=200)
+    def discover_opportunities() -> dict:
+        opportunities = discover_mock_opportunities(service)
+        return {"source": "mock-board", "count": len(opportunities), "opportunities": opportunities}
+
+    @app.get("/opportunities")
+    def list_opportunities(status: Optional[str] = None) -> list[dict]:
+        return service.list_opportunities(status)
+
+    @app.patch("/opportunities/{opportunity_id}/status")
+    def update_opportunity_status(
+        opportunity_id: int, request: OpportunityStatusRequest
+    ) -> dict:
+        try:
+            return service.update_opportunity_status(opportunity_id, request.status)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return app
 

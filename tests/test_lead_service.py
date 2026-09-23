@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from lead_service.db import Database
 from lead_service.service import LeadService
+from lead_service.opportunity_agent import discover_mock_opportunities
 
 
 class LeadServiceTests(unittest.TestCase):
@@ -58,6 +59,14 @@ class LeadServiceTests(unittest.TestCase):
         appointment = self.service.list_appointments()[0]
         self.assertEqual(appointment["lead_name"], "Ada Lovelace")
         self.assertEqual(appointment["lead_email"], "ada@example.com")
+
+    def test_agent_discovers_scores_and_updates_mock_opportunities(self):
+        opportunities = discover_mock_opportunities(self.service)
+        self.assertEqual(len(opportunities), 3)
+        self.assertGreater(opportunities[0]["score"], opportunities[-1]["score"])
+        updated = self.service.update_opportunity_status(opportunities[0]["id"], "reviewed")
+        self.assertEqual(updated["status"], "reviewed")
+        self.assertEqual(len(self.service.list_opportunities("reviewed")), 1)
 
     @staticmethod
     def future_time():

@@ -117,3 +117,52 @@ class LeadService:
             "qualified_leads": qualified_count,
             "booked_appointments": booked_count,
         }
+
+    def upsert_opportunity(self, opportunity: Dict[str, Any]) -> Dict[str, Any]:
+        fields = (
+            opportunity["external_id"], opportunity["title"], opportunity["source"],
+            opportunity["url"], opportunity["summary"], opportunity.get("budget"),
+            opportunity["score"], opportunity.get("status", "new"),
+            opportunity.get("discovered_at", utc_now().isoformat()),
+        )
+        with self.database.connection() as connection:
+            connection.execute(
+                """INSERT INTO opportunities
+                (external_id, title, source, url, summary, budget, score, status, discovered_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(external_id) DO UPDATE SET
+                    title=excluded.title, summary=excluded.summary, budget=excluded.budget,
+                    score=excluded.score""",
+                fields,
+            )
+            row = connection.execute(
+                "SELECT * FROM opportunities WHERE external_id = ?",
+                (opportunity["external_id"],),
+            ).fetchone()
+        return dict(row)
+
+    def list_opportunities(self, status: Optional[str] = None) -> list[Dict[str, Any]]:
+        query = "SELECT * FROM opportunities"
+        params: tuple[str, ...] = ()
+        if status:
+            query += " WHERE status = ?"
+            params = (status,)
+        query += " ORDER BY score DESC, discovered_at DESC"
+        with self.database.connection() as connection:
+            rows = connection.execute(query, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def update_opportunity_status(self, opportunity_id: int, status: str) -> Dict[str, Any]:
+        if status not in {"new", "reviewed", "proposal_ready", "archived"}:
+            raise ValueError("status must be new, reviewed, proposal_ready, or archived")
+        with self.database.connection() as connection:
+            cursor = connection.execute(
+                "UPDATE opportunities SET status = ? WHERE id = ?",
+                (status, opportunity_id),
+            )
+            if cursor.rowcount == 0:
+                raise LookupError("opportunity not found")
+            row = connection.execute(
+                "SELECT * FROM opportunities WHERE id = ?", (opportunity_id,)
+            ).fetchone()
+        return dict(row)
