@@ -3,6 +3,8 @@
 The mock catalog stands in for a consented job board/API connector. It never
 sends messages, submits proposals, or accesses credentials.
 """
+import json
+from pathlib import Path
 from typing import Any, Dict
 
 
@@ -43,10 +45,34 @@ def score_opportunity(opportunity: Dict[str, Any]) -> int:
     return max(0, score)
 
 
-def discover_mock_opportunities(service: Any) -> list[Dict[str, Any]]:
+def _load_feed(path: str | None) -> tuple[Dict[str, Any], ...]:
+    if not path:
+        return MOCK_OPPORTUNITIES
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("OPPORTUNITY_FEED_PATH must point to valid JSON") from exc
+    if not isinstance(data, list):
+        raise ValueError("opportunity feed must be a JSON array")
+    required = {"external_id", "title", "source", "url", "summary"}
+    items = []
+    for item in data:
+        if not isinstance(item, dict) or not required.issubset(item):
+            raise ValueError("each opportunity needs external_id, title, source, url, and summary")
+        item = dict(item)
+        item.setdefault("keywords", {"automation": 10, "lead": 10})
+        items.append(item)
+    return tuple(items)
+
+
+def discover_opportunities(service: Any, feed_path: str | None = None) -> list[Dict[str, Any]]:
     discovered = []
-    for item in MOCK_OPPORTUNITIES:
+    for item in _load_feed(feed_path):
         record = {key: value for key, value in item.items() if key != "keywords"}
         record["score"] = score_opportunity(item)
         discovered.append(service.upsert_opportunity(record))
     return discovered
+
+
+def discover_mock_opportunities(service: Any) -> list[Dict[str, Any]]:
+    return discover_opportunities(service)

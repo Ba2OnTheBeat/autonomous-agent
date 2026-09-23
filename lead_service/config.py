@@ -8,6 +8,7 @@ class Settings:
     database_path: str = "leads.db"
     business_name: str = "Local Demo Business"
     appointment_duration_minutes: int = 30
+    opportunity_feed_path: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -21,4 +22,5 @@ class Settings:
             database_path=database_path,
             business_name=os.getenv("BUSINESS_NAME", "Local Demo Business"),
             appointment_duration_minutes=duration,
+            opportunity_feed_path=os.getenv("OPPORTUNITY_FEED_PATH") or None,
         )

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from .config import Settings
 from .db import Database
 from .service import LeadService
-from .opportunity_agent import discover_mock_opportunities
+from .opportunity_agent import discover_opportunities as run_discovery
 
 
 class LeadRequest(BaseModel):
@@ -87,8 +87,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     @app.post("/agent/discover", status_code=200)
     def discover_opportunities() -> dict:
-        opportunities = discover_mock_opportunities(service)
-        return {"source": "mock-board", "count": len(opportunities), "opportunities": opportunities}
+        try:
+            opportunities = run_discovery(service, settings.opportunity_feed_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"count": len(opportunities), "opportunities": opportunities}
 
     @app.get("/opportunities")
     def list_opportunities(status: Optional[str] = None) -> list[dict]:

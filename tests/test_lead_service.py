@@ -1,9 +1,11 @@
 ﻿import unittest
+import json
+import tempfile
 from datetime import datetime, timedelta, timezone
 
 from lead_service.db import Database
 from lead_service.service import LeadService
-from lead_service.opportunity_agent import discover_mock_opportunities
+from lead_service.opportunity_agent import discover_mock_opportunities, discover_opportunities
 
 
 class LeadServiceTests(unittest.TestCase):
@@ -67,6 +69,18 @@ class LeadServiceTests(unittest.TestCase):
         updated = self.service.update_opportunity_status(opportunities[0]["id"], "reviewed")
         self.assertEqual(updated["status"], "reviewed")
         self.assertEqual(len(self.service.list_opportunities("reviewed")), 1)
+
+    def test_agent_accepts_local_json_feed(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", encoding="utf-8", delete=False) as feed:
+            json.dump([{
+                "external_id": "local-1", "title": "Lead automation project",
+                "source": "customer-export", "url": "https://example.invalid/local-1",
+                "summary": "Automate inbound lead qualification.", "budget": "$2,000",
+            }], feed)
+            path = feed.name
+        opportunities = discover_opportunities(self.service, path)
+        self.assertEqual(opportunities[0]["external_id"], "local-1")
+        self.assertGreater(opportunities[0]["score"], 0)
 
     @staticmethod
     def future_time():
