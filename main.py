@@ -5,7 +5,7 @@ from agents.task_executor.research_agent import research_executor
 from agents.task_executor.seo_agent import seo_executor
 from agents.task_executor.data_agent import data_executor
 from agents.delivery.delivery_agent import delivery_agent
-from agents.finance.finance_agent import finance_agent
+from agents.delivery.agents.finance.finance_agent import finance_agent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

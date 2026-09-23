@@ -57,6 +57,13 @@ class LeadService:
             raise LookupError("lead not found")
         return dict(row)
 
+    def list_leads(self) -> list[Dict[str, Any]]:
+        with self.database.connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM leads ORDER BY created_at DESC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def book_appointment(self, lead_id: int, requested_start: str) -> Dict[str, Any]:
         lead = self.get_lead(lead_id)
         if lead["qualification_status"] != "qualified":
@@ -88,6 +95,25 @@ class LeadService:
     def list_appointments(self) -> list[Dict[str, Any]]:
         with self.database.connection() as connection:
             rows = connection.execute(
-                "SELECT * FROM appointments ORDER BY starts_at"
+                """SELECT appointments.*, leads.name AS lead_name,
+                          leads.email AS lead_email
+                   FROM appointments
+                   JOIN leads ON leads.id = appointments.lead_id
+                   ORDER BY starts_at"""
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def funnel_summary(self) -> Dict[str, int]:
+        with self.database.connection() as connection:
+            lead_count = connection.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+            qualified_count = connection.execute(
+                "SELECT COUNT(*) FROM leads WHERE qualification_status = 'qualified'"
+            ).fetchone()[0]
+            booked_count = connection.execute(
+                "SELECT COUNT(*) FROM appointments WHERE status = 'booked'"
+            ).fetchone()[0]
+        return {
+            "leads": lead_count,
+            "qualified_leads": qualified_count,
+            "booked_appointments": booked_count,
+        }

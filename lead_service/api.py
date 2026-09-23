@@ -58,6 +58,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.get("/leads")
+    def list_leads() -> list[dict]:
+        return service.list_leads()
+
     @app.post("/leads/{lead_id}/appointments", status_code=201)
     def book_appointment(lead_id: int, request: AppointmentRequest) -> dict:
         try:
@@ -70,6 +74,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     @app.get("/appointments")
     def list_appointments() -> list[dict]:
         return service.list_appointments()
+
+    @app.get("/metrics")
+    def metrics() -> dict:
+        """Local funnel metrics for demo and customer validation."""
+        return service.funnel_summary()
 
     return app
 

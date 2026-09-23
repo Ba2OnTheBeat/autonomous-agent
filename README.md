@@ -40,7 +40,9 @@ curl.exe -X POST http://127.0.0.1:8000/leads/1/appointments `
 
 Leads with a need of at least 20 characters are qualified; shorter valid needs are retained as `needs_review` and cannot book until a future review process qualifies them. Appointments reject past, malformed, and overlapping times.
 
-The API also exposes `GET /health`, `GET /leads/{id}`, and `GET /appointments` for a simple operator/demo view. Input lengths, email shape, timezone-aware ISO-8601 appointment times, and business rules are validated before persistence.
+The API also exposes `GET /health`, `GET /leads`, `GET /leads/{id}`, `GET /appointments`, and `GET /metrics` for a simple operator/demo view. `/metrics` reports the local funnel counts (`leads`, `qualified_leads`, and `booked_appointments`) so a customer pilot can measure whether the workflow creates value. Input lengths, email shape, timezone-aware ISO-8601 appointment times, and business rules are validated before persistence.
+
+This is an honest foundation for an automated revenue workflow, not a promise of automatic profit: the current version handles inbound demand and booking locally, while outreach, payments, CRM sync, and calendar integrations remain deliberate future integrations requiring customer consent and credentials.
 
 ## Test
 
