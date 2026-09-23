@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lead booking demo</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #172033; }
+    form { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #ccd3df; border-radius: 8px; }
+    input, textarea, button { font: inherit; padding: .6rem; }
+    textarea { min-height: 6rem; }
+    button { cursor: pointer; background: #2457d6; color: white; border: 0; border-radius: 5px; }
+    #result { white-space: pre-wrap; margin-top: 1rem; padding: 1rem; background: #f2f5fa; border-radius: 8px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Lead booking demo</h1>
+  <p>Submit an inbound lead, then request a local mock-calendar appointment. No messages are sent.</p>
+  <form id="lead-form">
+    <label>Name <input name="name" required minlength="2" maxlength="120"></label>
+    <label>Email <input name="email" type="email" required maxlength="320"></label>
+    <label>Company <input name="company" maxlength="160"></label>
+    <label>Phone <input name="phone" maxlength="40"></label>
+    <label>What do you need? <textarea name="need" required minlength="10" maxlength="2000"></textarea></label>
+    <button type="submit">Submit lead</button>
+  </form>
+  <form id="appointment-form" class="hidden">
+    <h2>Request an appointment</h2>
+    <label>Start time (your browser timezone)
+      <input name="requested_start" type="datetime-local" required>
+    </label>
+    <button type="submit">Book appointment</button>
+  </form>
+  <div id="result" role="status">Waiting for a lead...</div>
+  <script>
+    const result = document.querySelector("#result");
+    const appointmentForm = document.querySelector("#appointment-form");
+    let leadId;
+    const show = (value) => { result.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
+    document.querySelector("#lead-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const data = Object.fromEntries(new FormData(event.target));
+      try {
+        const response = await fetch("/leads", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.detail || "Lead could not be submitted");
+        leadId = body.id;
+        show(body);
+        appointmentForm.classList.toggle("hidden", body.qualification_status !== "qualified");
+      } catch (error) { show(error.message); }
+    });
+    appointmentForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const requested_start = new Date(event.target.requested_start.value).toISOString();
+      try {
+        const response = await fetch(`/leads/${leadId}/appointments`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({requested_start}) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.detail || "Appointment could not be booked");
+        show(body);
+      } catch (error) { show(error.message); }
+    });
+  </script>
+</body>
+</html>
